@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Valentine Surprise 💖</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  font-family: 'Quicksand', sans-serif;
+  background: linear-gradient(270deg, #ffb6c1, #ffc0cb, #ff69b4);
+  background-size: 600% 600%;
+  animation: bgMove 15s ease infinite;
+  overflow:hidden;
+  text-align:center;
+}
+
+@keyframes bgMove {
+  0% {background-position:0% 50%;}
+  50% {background-position:100% 50%;}
+  100% {background-position:0% 50%;}
+}
+
+#message {
+  font-family:'Pacifico', cursive;
+  font-size:28px;
+  margin-top:20px;
+  animation: pulse 2s infinite;
+}
+
+#arrow { font-size:40px; animation: bounce 1s infinite; }
+
+#envelope {
+  width:220px;
+  height:150px;
+  background:#fff;
+  margin:40px auto;
+  position:relative;
+  border-radius:10px;
+  cursor:pointer;
+  perspective:1000px;
+}
+
+#flap {
+  position:absolute;
+  top:0; left:0;
+  width:100%; height:75px;
+  background:#ffe4ec;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top;
+  transition: transform 1s;
+}
+
+#envelope.open #flap { transform: rotateX(180deg); }
+
+#sticker {
+  position:absolute;
+  top:50px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:45px;
+  transition: transform 1s, opacity 1s;
+}
+#envelope.open #sticker {
+  transform: translateX(-50%) translateY(-20px) scale(0);
+  opacity:0;
+}
+
+#letter {
+  display:none;
+  width:85%;
+  max-width:350px;
+  margin:20px auto;
+  padding:20px;
+  background:white;
+  border-radius:15px;
+  box-shadow:0 0 10px rgba(0,0,0,0.2);
+  cursor:pointer;
+  animation: slideUp 1s forwards;
+}
+
+button {
+  padding:12px 25px;
+  font-size:18px;
+  margin:10px;
+  border:none;
+  border-radius:20px;
+  cursor:pointer;
+}
+#yes { background:#ff69b4; color:white; }
+#no { background:#aaa; color:white; }
+
+#reset {
+  position:fixed;
+  bottom:10px; right:10px;
+  padding:8px 15px;
+  border-radius:15px;
+  border:none;
+  background:#ff69b4;
+  color:white;
+  cursor:pointer;
+}
+
+.heart, .sparkle, .tear {
+  position:fixed;
+  top:-40px;
+}
+.heart {
+  font-size:120px; /* 10x bigger hearts */
+  animation: fallSlow 12s linear forwards;
+}
+@keyframes fallSlow { to { transform: translateY(120vh); opacity:0; } }
+
+.sparkle { animation: sparkle 3s linear forwards; }
+
+#cat { display:none; font-size:120px; margin-top:20px; animation: pop 1s; }
+#finger { font-size:40px; display:none; }
+
+@keyframes fall { to { transform: translateY(110vh); opacity:0; } }
+@keyframes bounce { 50% { transform: translateY(10px); } }
+@keyframes pulse { 50% { transform: scale(1.05); } }
+@keyframes slideUp { from { transform:translateY(50px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+@keyframes sparkle { to { transform: translateY(110vh) rotate(360deg); opacity:0; } }
+@keyframes pop { 50% { transform: scale(1.3); } }
+
+@media(max-width:600px){
+  #message{font-size:24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- AUDIO FILES -->
+<audio id="music" preload="auto" loop>
+  <source src="your-song.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="rainSound" preload="auto" loop>
+  <source src="rain.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="popSound" preload="auto">
+  <source src="pop.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="envelopeSound" preload="auto">
+  <source src="open.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="clickSound" preload="auto">
+  <source src="click.mp3" type="audio/mpeg">
+</audio>
+
+<div id="message">Open me please</div>
+<div id="arrow" style="color:black;">⬇</div>
+
+<div id="envelope">
+  <div id="flap"></div>
+  <div id="sticker">❤️</div>
+</div>
+
+<div id="letter"></div>
+<div id="buttons"></div>
+<div id="cat"></div>
+<div id="finger">👉</div>
+<button id="reset">Reset 💫</button>
+
+<script>
+let stage = 0;
+let yesCount = 0;
+let noCount = 0;
+const message = document.getElementById('message');
+// ensure all dynamic question text uses the same font as the initial "Please" text
+message.style.fontFamily = "'Pacifico', cursive";
+const envelope = document.getElementById('envelope');
+const letter = document.getElementById('letter');
+const buttons = document.getElementById('buttons');
+const cat = document.getElementById('cat');
+const finger = document.getElementById('finger');
+const music = document.getElementById('music');
+const rainSound = document.getElementById('rainSound');
+const popSound = document.getElementById('popSound');
+const envelopeSound = document.getElementById('envelopeSound');
+const clickSound = document.getElementById('clickSound');
+
+// Autoplay music after first click
+// FORCE audio unlock + debug on first user interaction (Apple/Safari rule)
+document.body.addEventListener('click', ()=>{
+  console.log('User interaction detected — attempting to play sounds');
+
+  music.muted = false;
+  music.volume = 1;
+  music.play().then(()=>console.log('Music playing')).catch(e=>console.log('Music blocked', e));
+
+  popSound.load();
+  envelopeSound.load();
+  clickSound.load();
+  rainSound.load();
+
+},{once:true}); },{once:true});
+
+// Hearts + sparkles
+setInterval(()=>{
+  const heart = document.createElement('div');
+  heart.className='heart';
+  heart.innerText='❤️';
+  heart.style.left=Math.random()*100+'vw';
+  document.body.appendChild(heart);
+  heart.onclick=()=>{
+  popSound.currentTime = 0;
+  popSound.play().catch(e=>console.log('Pop sound blocked', e));
+  heart.remove();
+};
+  setTimeout(()=>heart.remove(),12000);
+},1200);
+
+setInterval(()=>{
+  const sp = document.createElement('div');
+  sp.className='sparkle';
+  sp.innerText='✨';
+  sp.style.left=Math.random()*100+'vw';
+  document.body.appendChild(sp);
+  setTimeout(()=>sp.remove(),3000);
+},800);
+
+setTimeout(()=>{message.innerText='Please 🐱👉👈';},1000);
+
+envelope.onclick = ()=>{
+  console.log('Envelope clicked');
+  envelopeSound.currentTime = 0;
+  envelopeSound.play().catch(e=>console.log('Envelope sound blocked', e));
+
+  // hide the initial please text and arrow once envelope is opened
+  message.style.display = 'none';
+  document.getElementById('arrow').style.display = 'none';
+  envelopeSound.currentTime = 0;
+  envelopeSound.play().catch(()=>{});
+  // hide the initial please text and arrow once envelope is opened
+  message.style.display = 'none';
+  document.getElementById('arrow').style.display = 'none';
+  // hide the initial please text and arrow once envelope is opened
+  message.style.display = 'none';
+  document.getElementById('arrow').style.display = 'none';
+  envelope.classList.add('open');
+  letter.style.display='block';
+  letter.innerText="You are the best thing that's ever happened to me. I want to be with you for time to come and I can't imagine losing you or being without you. I love you for you and everything about you. I love that you love me for me. I thank you for being the most loyal girlfriend, and best girlfriend ever so...";
+  stage = 1;
+};
+
+letter.onclick = ()=>{
+  if(stage===1){
+    letter.innerText='WILL YOU BE MY VALENTINE?';
+    buttons.innerHTML='<button id="yes">Yes</button><button id="no">No</button>';
+    stage=2;
+    document.getElementById('yes').onclick=yesFlow;
+    document.getElementById('no').onclick=noFlow;
+  }
+};
+
+function yesFlow(){
+  console.log('Yes clicked');
+  clickSound.currentTime = 0;
+  clickSound.play().catch(e=>console.log('Click sound blocked', e));
+  clickSound.currentTime = 0;
+  clickSound.play().catch(()=>{});
+  yesCount++;
+  if(yesCount===1) message.innerText='ARE YOU SURE?';
+  else if(yesCount<5) message.innerText='You are not sure enough you have to tap harder';
+  else{
+    cat.style.display='block';
+    cat.innerText='🐱💐';
+    message.innerText="Next year it's your turn";
+    buttons.innerHTML='';
+    confettiHearts();
+  }
+}
+
+function noFlow(){
+  console.log('No clicked');
+  cl
+  clickSound.currentTime = 0;
+  clickSound.play().catch(()=>{});
+  noCount++;
+  const texts=['why?','for real?','wow','SO YOU DON’T WANNA MAKE ME THE HAPPIEST OWAN?'];
+  if(noCount<=texts.length){ message.innerText=texts[noCount-1]; }
+  else{
+    rainSound.play();
+    cat.style.display='block';
+    cat.innerText='😿';
+    finger.style.display='block';
+    message.innerText='You horrible person 😡 How could you?';
+    tearRain();
+  }
+}
+
+function confettiHearts(){
+  setInterval(()=>{
+    const heart = document.createElement('div');
+    heart.className='heart';
+    heart.innerText='💖';
+    heart.style.left=Math.random()*100+'vw';
+    document.body.appendChild(heart);
+    setTimeout(()=>heart.remove(),4000);
+  },200);
+}
+
+function tearRain(){
+  setInterval(()=>{
+    const tear = document.createElement('div');
+    tear.className='tear';
+    tear.innerText='💧';
+    tear.style.left=Math.random()*100+'vw';
+    document.body.appendChild(tear);
+    setTimeout(()=>tear.remove(),4000);
+  },300);
+}
+
+// Reset button
+document.getElementById('reset').onclick=()=>{
+  location.reload();
+};
+</script>
+</body>
+</html>
